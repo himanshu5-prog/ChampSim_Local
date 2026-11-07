@@ -7,6 +7,8 @@ cpu_stats operator-(cpu_stats lhs, cpu_stats rhs)
   lhs.end_instrs -= rhs.end_instrs;
   lhs.end_cycles -= rhs.end_cycles;
   lhs.total_rob_occupancy_at_branch_mispredict -= rhs.total_rob_occupancy_at_branch_mispredict;
+  lhs.total_rob_occupancy -= rhs.total_rob_occupancy;
+  lhs.rob_occupancy_samples -= rhs.rob_occupancy_samples;
 
   lhs.mispredicts_resolved_at_decode -= rhs.mispredicts_resolved_at_decode;
   lhs.mispredicts_resolved_at_execute -= rhs.mispredicts_resolved_at_execute;

@@ -24,6 +24,13 @@ struct cache_stats {
   champsim::stats::event_counter<std::pair<access_type, std::remove_cv_t<decltype(NUM_CPUS)>>> fill = {};
 
   long total_miss_latency_cycles{};
+
+  // MSHR occupancy (distinct outstanding misses) sampled every cycle of this cache.
+  // Average occupancy = total_mshr_occupancy / mshr_samples;
+  // MLP (memory-level parallelism) = total_mshr_occupancy / mshr_busy_samples (cycles with >= 1 outstanding miss)
+  uint64_t total_mshr_occupancy = 0;
+  uint64_t mshr_samples = 0;
+  uint64_t mshr_busy_samples = 0;
 };
 
 cache_stats operator-(cache_stats lhs, cache_stats rhs);

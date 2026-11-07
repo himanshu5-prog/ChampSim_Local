@@ -56,6 +56,9 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
                               ::print_ratio(std::kilo::num * total_mispredictions, stats.instrs()),
                               ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, total_mispredictions)));
 
+  lines.push_back(fmt::format("{} Average ROB Occupancy (per cycle): {} over {} cycles", stats.name,
+                              ::print_ratio(stats.total_rob_occupancy, stats.rob_occupancy_samples), stats.rob_occupancy_samples));
+
   // Mispredict resolve latency (cycles from fetch stop to branch resolution)
   const auto resolved = stats.mispredicts_resolved_at_decode + stats.mispredicts_resolved_at_execute;
   const auto resolve_cycles = stats.total_mispredict_latency_decode + stats.total_mispredict_latency_execute;
@@ -146,6 +149,14 @@ std::vector<std::string> champsim::plain_printer::format(CACHE::stats_type stats
     uint64_t total_downstream_demands = total_fill - stats.fill.value_or(std::pair{access_type::PREFETCH, cpu}, fill_value_type{});
     lines.push_back(
         fmt::format("cpu{}->{} AVERAGE MISS LATENCY: {} cycles", cpu, stats.name, ::print_ratio(stats.total_miss_latency_cycles, total_downstream_demands)));
+  }
+
+  // MSHR occupancy is per cache (shared by all CPUs that use it); an empty stat block still prints nothing
+  if (!std::empty(cpus)) {
+    lines.push_back(fmt::format("{} MSHR OCCUPANCY: average {} | cycles with outstanding misses: {}% | MLP (avg outstanding misses when >= 1): {}",
+                                stats.name, ::print_ratio(stats.total_mshr_occupancy, stats.mshr_samples),
+                                ::print_ratio(100 * stats.mshr_busy_samples, stats.mshr_samples),
+                                ::print_ratio(stats.total_mshr_occupancy, stats.mshr_busy_samples)));
   }
 
   return lines;

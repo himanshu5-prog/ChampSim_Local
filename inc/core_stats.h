@@ -16,6 +16,10 @@ struct cpu_stats {
   long long end_cycles = 0;
   uint64_t total_rob_occupancy_at_branch_mispredict = 0;
 
+  // ROB occupancy sampled every cycle (average = total_rob_occupancy / rob_occupancy_samples)
+  uint64_t total_rob_occupancy = 0;
+  uint64_t rob_occupancy_samples = 0;
+
   // Mispredict resolve latency: cycles from the mispredict (fetch stops) until the branch resolves
   // (fetch resumes BRANCH_MISPREDICT_PENALTY cycles later). Split by where it resolved.
   // Histogram buckets: [0,10) [10,25) [25,50) [50,100) [100,200) [200,inf)

@@ -3,6 +3,17 @@
 #include "cache_stats.h"
 #include "stats_printer.h"
 
+namespace
+{
+// The MSHR occupancy line is printed once per cache, after the per-CPU lines, for any cache that has stats.
+void append_empty_mshr_line(std::vector<std::string>& expected, const std::string& name)
+{
+  if (!std::empty(expected)) {
+    expected.push_back(name + " MSHR OCCUPANCY: average - | cycles with outstanding misses: -% | MLP (avg outstanding misses when >= 1): -");
+  }
+}
+} // namespace
+
 TEST_CASE("An empty cache stat block prints nothing")
 {
   cache_stats given{};
@@ -10,6 +21,7 @@ TEST_CASE("An empty cache stat block prints nothing")
 
   std::vector<std::string> expected{};
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -38,6 +50,7 @@ TEST_CASE("Hits increment the hit and access counts")
                                     "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"};
   expected.at(line_index) = expected_line;
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -66,6 +79,7 @@ TEST_CASE("Misses increment the miss and access counts")
                                     "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"};
   expected.at(line_index) = expected_line;
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -101,6 +115,7 @@ TEST_CASE("Returning misses increment the AMAT")
   expected.push_back("cpu0->test_cache AVERAGE MISS LATENCY: " + std::to_string(miss_return_latency) + " cycles");
   expected.at(line_index) = expected_line;
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -120,6 +135,7 @@ TEST_CASE("Prefetch requests increase the count")
                                     "cpu0->test_cache PREFETCH REQUESTED:          1 ISSUED:          0 USEFUL:          0 USELESS:          0",
                                     "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"};
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -139,6 +155,7 @@ TEST_CASE("Prefetch issues increase the count")
                                     "cpu0->test_cache PREFETCH REQUESTED:          0 ISSUED:          1 USEFUL:          0 USELESS:          0",
                                     "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"};
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -158,6 +175,7 @@ TEST_CASE("Prefetch useful increases the count")
                                     "cpu0->test_cache PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          1 USELESS:          0",
                                     "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"};
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -177,6 +195,7 @@ TEST_CASE("Prefetch useless increases the count")
                                     "cpu0->test_cache PREFETCH REQUESTED:          0 ISSUED:          0 USEFUL:          0 USELESS:          1",
                                     "cpu0->test_cache AVERAGE MISS LATENCY: - cycles"};
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
 }
 
@@ -223,5 +242,36 @@ TEST_CASE("Multicore stats are tracked separately")
   expected.at(line_index_cpu0) = expected_line_cpu0;
   expected.at(line_index_cpu1) = expected_line_cpu1;
 
+  append_empty_mshr_line(expected, given.name);
   REQUIRE_THAT(champsim::plain_printer::format(given), Catch::Matchers::RangeEquals(expected));
+}
+TEST_CASE("MSHR occupancy reports the average, busy fraction, and MLP")
+{
+  cache_stats given{};
+  given.name = "test_cache";
+  given.hits.set({access_type::LOAD, 0}, 1);
+  given.total_mshr_occupancy = 30;
+  given.mshr_samples = 20;
+  given.mshr_busy_samples = 10;
+
+  REQUIRE(champsim::plain_printer::format(given).back()
+          == "test_cache MSHR OCCUPANCY: average 1.5 | cycles with outstanding misses: 50% | MLP (avg outstanding misses when >= 1): 3");
+}
+
+TEST_CASE("Subtracting cache stats subtracts the MSHR counters")
+{
+  cache_stats later{};
+  later.total_mshr_occupancy = 90;
+  later.mshr_samples = 60;
+  later.mshr_busy_samples = 40;
+
+  cache_stats earlier{};
+  earlier.total_mshr_occupancy = 30;
+  earlier.mshr_samples = 20;
+  earlier.mshr_busy_samples = 15;
+
+  auto diff = later - earlier;
+  REQUIRE(diff.total_mshr_occupancy == 60);
+  REQUIRE(diff.mshr_samples == 40);
+  REQUIRE(diff.mshr_busy_samples == 25);
 }

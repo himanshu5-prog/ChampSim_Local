@@ -49,6 +49,10 @@ long O3_CPU::operate()
   progress += check_dib();
   initialize_instruction();
 
+  // sample ROB occupancy once per cycle
+  sim_stats.total_rob_occupancy += std::size(ROB);
+  ++sim_stats.rob_occupancy_samples;
+
   return progress;
 }
 

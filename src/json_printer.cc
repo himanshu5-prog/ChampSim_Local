@@ -47,6 +47,7 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
   j = nlohmann::json{{"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
+                     {"ROB occupancy", nlohmann::json{{"total", stats.total_rob_occupancy}, {"samples", stats.rob_occupancy_samples}}},
                      {"mispredict", mpki},
                      {"mispredict resolve latency", resolve_latency}};
 }
@@ -69,6 +70,9 @@ void to_json(nlohmann::json& j, const CACHE::stats_type& stats)
     total_downstream_demands -= stats.fill.value_or(std::pair{access_type::PREFETCH, cpu}, fill_value_type{});
 
   statsmap.emplace("miss latency", std::ceil(stats.total_miss_latency_cycles) / std::ceil(total_downstream_demands));
+  statsmap.emplace("MSHR occupancy", nlohmann::json{{"total", stats.total_mshr_occupancy},
+                                                    {"samples", stats.mshr_samples},
+                                                    {"busy samples", stats.mshr_busy_samples}});
   for (const auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
     std::vector<hits_value_type> hits;
     std::vector<misses_value_type> misses;

@@ -511,6 +511,13 @@ long CACHE::operate()
 
   impl_prefetcher_cycle_operate();
 
+  // sample MSHR occupancy (distinct outstanding misses) once per cycle
+  sim_stats.total_mshr_occupancy += std::size(MSHR);
+  ++sim_stats.mshr_samples;
+  if (!std::empty(MSHR)) {
+    ++sim_stats.mshr_busy_samples;
+  }
+
   if constexpr (champsim::debug_print) {
     fmt::print("[{}] {} cycle completed: {} tags checked: {} remaining: {} stash consumed: {} remaining: {} channel consumed: {} pq consumed {} unused consume "
                "bw {}\n",
@@ -872,6 +879,10 @@ void CACHE::end_phase(unsigned finished_cpu)
   roi_stats.pf_useful = sim_stats.pf_useful;
   roi_stats.pf_useless = sim_stats.pf_useless;
   roi_stats.pf_fill = sim_stats.pf_fill;
+
+  roi_stats.total_mshr_occupancy = sim_stats.total_mshr_occupancy;
+  roi_stats.mshr_samples = sim_stats.mshr_samples;
+  roi_stats.mshr_busy_samples = sim_stats.mshr_busy_samples;
 
   for (auto* ul : upper_levels) {
     ul->roi_stats.RQ_ACCESS = ul->sim_stats.RQ_ACCESS;
