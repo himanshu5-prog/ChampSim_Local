@@ -172,6 +172,7 @@ public:
   void do_execution(ooo_model_instr& instr);
   void do_memory_scheduling(ooo_model_instr& instr);
   void do_complete_execution(ooo_model_instr& instr);
+  void record_mispredict_resolution(const ooo_model_instr& instr, bool resolved_at_decode);
   void do_sq_forward_to_lq(LSQ_ENTRY& sq_entry, LSQ_ENTRY& lq_entry);
 
   void do_finish_store(const LSQ_ENTRY& sq_entry);

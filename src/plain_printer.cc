@@ -56,6 +56,30 @@ std::vector<std::string> champsim::plain_printer::format(O3_CPU::stats_type stat
                               ::print_ratio(std::kilo::num * total_mispredictions, stats.instrs()),
                               ::print_ratio(stats.total_rob_occupancy_at_branch_mispredict, total_mispredictions)));
 
+  // Mispredict resolve latency (cycles from fetch stop to branch resolution)
+  const auto resolved = stats.mispredicts_resolved_at_decode + stats.mispredicts_resolved_at_execute;
+  const auto resolve_cycles = stats.total_mispredict_latency_decode + stats.total_mispredict_latency_execute;
+  lines.push_back(fmt::format("{} Mispredict Resolve Latency: average {} cycles over {} mispredicts | at decode: {} (avg {} cycles) | at execute: {} (avg {} "
+                              "cycles) | fetch stalled on mispredicts: {}% of cycles",
+                              stats.name, ::print_ratio(resolve_cycles, resolved), resolved, stats.mispredicts_resolved_at_decode,
+                              ::print_ratio(stats.total_mispredict_latency_decode, stats.mispredicts_resolved_at_decode),
+                              stats.mispredicts_resolved_at_execute,
+                              ::print_ratio(stats.total_mispredict_latency_execute, stats.mispredicts_resolved_at_execute),
+                              ::print_ratio(100 * resolve_cycles, stats.cycles())));
+
+  {
+    const auto& bounds = O3_CPU::stats_type::mispredict_latency_bucket_bounds;
+    std::string hist = fmt::format("{} Mispredict Resolve Latency histogram (cycles):", stats.name);
+    for (std::size_t i = 0; i < stats.mispredict_latency_histogram.size(); ++i) {
+      const auto count = stats.mispredict_latency_histogram.at(i);
+      std::string label = (i == 0)                 ? fmt::format("<{}", bounds.front())
+                          : (i == std::size(bounds)) ? fmt::format(">={}", bounds.back())
+                                                     : fmt::format("{}-{}", bounds.at(i - 1), bounds.at(i) - 1);
+      hist += fmt::format("{} {}: {} ({}%)", (i == 0 ? "" : " |"), label, count, ::print_ratio(100 * count, resolved));
+    }
+    lines.push_back(hist);
+  }
+
   lines.emplace_back("Branch type MPKI");
   for (auto idx : types) {
     lines.push_back(fmt::format("{}: {}", branch_type_names.at(champsim::to_underlying(idx)),

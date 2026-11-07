@@ -33,10 +33,22 @@ void to_json(nlohmann::json& j, const O3_CPU::stats_type& stats)
     mpki.emplace(branch_type_names.at(champsim::to_underlying(type)), stats.branch_type_misses.value_or(type, 0));
   }
 
+  nlohmann::json resolve_latency{{"resolved at decode", stats.mispredicts_resolved_at_decode},
+                                 {"resolved at execute", stats.mispredicts_resolved_at_execute},
+                                 {"total cycles at decode", stats.total_mispredict_latency_decode},
+                                 {"total cycles at execute", stats.total_mispredict_latency_execute},
+                                 {"histogram bucket lower bounds", nlohmann::json::array()},
+                                 {"histogram", stats.mispredict_latency_histogram}};
+  resolve_latency["histogram bucket lower bounds"].push_back(0);
+  for (auto bound : O3_CPU::stats_type::mispredict_latency_bucket_bounds) {
+    resolve_latency["histogram bucket lower bounds"].push_back(bound);
+  }
+
   j = nlohmann::json{{"instructions", stats.instrs()},
                      {"cycles", stats.cycles()},
                      {"Avg ROB occupancy at mispredict", std::ceil(stats.total_rob_occupancy_at_branch_mispredict) / std::ceil(total_mispredictions)},
-                     {"mispredict", mpki}};
+                     {"mispredict", mpki},
+                     {"mispredict resolve latency", resolve_latency}};
 }
 
 void to_json(nlohmann::json& j, const CACHE::stats_type& stats)

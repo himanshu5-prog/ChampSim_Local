@@ -157,6 +157,7 @@ bool O3_CPU::do_predict_branch(ooo_model_instr& arch_instr)
         fetch_resume_time = champsim::chrono::clock::time_point::max();
         stop_fetch = true;
         arch_instr.branch_mispredicted = true;
+        arch_instr.mispredict_time = current_time;
       }
     } else {
       stop_fetch = arch_instr.branch_taken; // if correctly predicted taken, then we can't fetch anymore instructions this cycle
@@ -352,6 +353,7 @@ long O3_CPU::decode_instruction()
       // These branches detect the misprediction at decode
       if ((db_entry.branch == BRANCH_DIRECT_JUMP) || (db_entry.branch == BRANCH_DIRECT_CALL)
           || (((db_entry.branch == BRANCH_CONDITIONAL) || (db_entry.branch == BRANCH_OTHER)) && db_entry.branch_taken == db_entry.branch_prediction)) {
+        this->record_mispredict_resolution(db_entry, true);
         // clear the branch_mispredicted bit so we don't attempt to resume fetch again at execute
         db_entry.branch_mispredicted = 0;
         // pay misprediction penalty
@@ -621,8 +623,27 @@ void O3_CPU::do_complete_execution(ooo_model_instr& instr)
   instr.completed = true;
 
   if (instr.branch_mispredicted) {
+    record_mispredict_resolution(instr, false);
     fetch_resume_time = current_time + BRANCH_MISPREDICT_PENALTY;
   }
+}
+
+void O3_CPU::record_mispredict_resolution(const ooo_model_instr& instr, bool resolved_at_decode)
+{
+  // Cycles fetch has been stopped by this mispredict, up to the moment it resolves
+  const long long latency = (current_time - instr.mispredict_time) / clock_period;
+
+  if (resolved_at_decode) {
+    ++sim_stats.mispredicts_resolved_at_decode;
+    sim_stats.total_mispredict_latency_decode += static_cast<uint64_t>(latency);
+  } else {
+    ++sim_stats.mispredicts_resolved_at_execute;
+    sim_stats.total_mispredict_latency_execute += static_cast<uint64_t>(latency);
+  }
+
+  const auto& bounds = stats_type::mispredict_latency_bucket_bounds;
+  const auto bucket = std::distance(std::begin(bounds), std::upper_bound(std::begin(bounds), std::end(bounds), latency));
+  ++sim_stats.mispredict_latency_histogram.at(static_cast<std::size_t>(bucket));
 }
 
 long O3_CPU::complete_inflight_instruction()
