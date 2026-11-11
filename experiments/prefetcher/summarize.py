@@ -9,7 +9,7 @@ from pathlib import Path
 
 trace = sys.argv[1] if len(sys.argv) > 1 else "605.mcf_s-665B"
 results = Path(__file__).parent / (sys.argv[2] if len(sys.argv) > 2 else "results") / trace
-PREFETCHERS = ["no", "next_line", "ip_stride", "va_ampm_lite", "spp_dev", "best_offset"]
+PREFETCHERS = ["no", "next_line", "ip_stride", "va_ampm_lite", "spp_dev", "best_offset", "sandbox"]
 
 
 def load_misses(text, cache):

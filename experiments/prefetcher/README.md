@@ -13,6 +13,7 @@ using counters from the `mispredict-latency-stats` branch.
 | `pf_va_ampm_lite.json` | va_ampm_lite | stock |
 | `pf_spp_dev.json` | spp_dev | stock |
 | `pf_best_offset.json` | best_offset | `prefetcher/best_offset/`, [Michaud, HPCA 2016](https://inria.hal.science/hal-01254863) |
+| `pf_sandbox.json` | sandbox | `prefetcher/sandbox/`, [Pugsley et al., HPCA 2014](https://doi.org/10.1109/HPCA.2014.6835971) |
 
 Every config is identical to `bp_gshare.json` except `L2C.prefetcher` and `executable_name`.
 The shared settings are a 4 GHz core with a 352-entry ROB and the gshare branch predictor;
@@ -54,7 +55,7 @@ for t in 605.mcf_s-665B 620.omnetpp_s-874B; do
   mkdir -p $R/$t
   bin/champsim_bp_gshare --warmup-instructions 20000000 --simulation-instructions 100000000 \
     --json $R/$t/no.json dir_trace/$t.champsimtrace.xz > $R/$t/no.txt &
-  for pf in next_line ip_stride va_ampm_lite spp_dev best_offset; do
+  for pf in next_line ip_stride va_ampm_lite spp_dev best_offset sandbox; do
     bin/champsim_pf_$pf --warmup-instructions 20000000 --simulation-instructions 100000000 \
       --json $R/$t/$pf.json dir_trace/$t.champsimtrace.xz > $R/$t/$pf.txt &
   done
@@ -62,7 +63,7 @@ done
 wait
 ```
 
-Each simulation is single-threaded. The loop starts all twelve at once, so on a machine with
+Each simulation is single-threaded. The loop starts all fourteen at once, so on a machine with
 fewer cores they share CPU time. On an 8-core Apple M1, a run alone took about 20–25 minutes.
 With eight running at once, the batch took about 50 minutes. Keep the machine awake for the
 whole run, for example with `caffeinate -i -s` on macOS.
@@ -90,6 +91,13 @@ boundaries or because the queue was full, and how often each offset was chosen:
 grep "Best-Offset" experiments/prefetcher/results/*/best_offset.txt
 ```
 
+Sandbox prints the same kind of counters, plus each candidate offset's final score and how many
+prefetches each offset issued:
+
+```bash
+grep "Sandbox" experiments/prefetcher/results/*/sandbox.txt
+```
+
 ## Notes
 
 - Both the `.txt` logs and the `--json` files are committed, so `summarize.py` runs straight
@@ -101,6 +109,10 @@ grep "Best-Offset" experiments/prefetcher/results/*/best_offset.txt
   prefetcher is on.
 - Best-Offset follows the paper's default parameters. It keeps only the 26 offsets up to 63,
   out of the paper's 52, because larger offsets cannot stay inside a 4 KB page.
+- Sandbox follows the paper's Table 1 parameters, with one exception. The paper limits each
+  core's prefetch degree, from 1 to 8 per direction, by its share of spare memory bandwidth, but
+  gives no formula. This version always allows 8, so it has no bandwidth throttle. On `mcf` that
+  floods DRAM: it issues many inaccurate prefetches and L2 miss latency rises.
 - Two traces with one 100M-instruction region each are a small sample. Treat small IPC
   differences with care.
 
