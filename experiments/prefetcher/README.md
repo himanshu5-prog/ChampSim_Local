@@ -92,8 +92,8 @@ grep "Best-Offset" experiments/prefetcher/results/*/best_offset.txt
 
 ## Notes
 
-- Committed results are the ChampSim `--json` files only. `summarize.py` reads the `.txt` logs,
-  so rerun step 3 to get them.
+- Both the `.txt` logs and the `--json` files are committed, so `summarize.py` runs straight
+  after cloning. Rerun step 3 only to change the setup.
 - Miss counts use LOAD lines, because TOTAL lines include prefetch requests.
 - Accuracy is useful / (useful + useless) at the L2. It is not comparable for `spp_dev`, which
   sends low-confidence prefetches to the LLC instead.
